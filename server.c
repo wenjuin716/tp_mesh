@@ -40,6 +40,9 @@
 #include "batadv_query.h"
 #include "hash.h"
 #include "list.h"
+#if 1
+#include "tp_mesh_netlink.h"
+#endif
 
 static int data_compare(void *d1, void *d2)
 {
@@ -393,6 +396,9 @@ int alfred_server(struct globals *globals)
 	struct timespec last_check, now, tv;
 	fd_set fds, errfds;
 	int num_socks;
+#if 1
+	int mesh_sock=0;
+#endif
 
 	if (create_hashes(globals))
 		return -1;
@@ -419,6 +425,15 @@ int alfred_server(struct globals *globals)
 		fprintf(stderr, "More than one interface specified in slave mode\n");
 		return -1;
 	}
+
+#if 1
+	/* create tp-link mesh netlink socket */
+	if ((mesh_sock = tp_mesh_netlink_init()) < 0)
+        {
+		fprintf(stderr, "Failed to create TP-Link Mesh netlink socket\n");
+		return -1;
+        }
+#endif
 
 	clock_gettime(CLOCK_MONOTONIC, &last_check);
 	globals->if_check = last_check;
@@ -449,6 +464,14 @@ int alfred_server(struct globals *globals)
 		maxsock = netsock_prepare_select(globals, &fds, maxsock);
 		maxsock = netsock_prepare_select(globals, &errfds, maxsock);
 
+#if 1
+		/* Set tp-link mesh socket */
+		if (mesh_sock > 0){
+			FD_SET(mesh_sock, &fds);
+			maxsock = mesh_sock > maxsock ? mesh_sock : maxsock;
+		}
+#endif
+
 		ret = pselect(maxsock + 1, &fds, NULL, &errfds, &tv, NULL);
 
 		if (ret == -1) {
@@ -460,6 +483,14 @@ int alfred_server(struct globals *globals)
 				printf("read unix socket\n");
 				unix_sock_read(globals);
 				continue;
+#if 1
+                        } else if (mesh_sock > 0 && FD_ISSET(mesh_sock, &fds)) {
+				/* deal with the LBD event */
+				printf("read TP-Link mesh netlink socket\n");
+				//unix_sock_read(globals);
+				tp_mesh_event_handler(mesh_sock);
+				continue;
+#endif
 			} else {
 				recvs = netsock_receive_packet(globals, &fds);
 				if (recvs > 0)

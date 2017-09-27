@@ -33,6 +33,7 @@ OBJ += send.o
 OBJ += server.o
 OBJ += unix_sock.o
 OBJ += util.o
+OBJ += tp_mesh_netlink.o
 MANPAGE = man/alfred.8
 
 # alfred flags and options

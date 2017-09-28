@@ -87,9 +87,16 @@ ifneq ($(CONFIG_ALFRED_GPSD),n)
 	GPSD_INSTALL=gpsd-install
 endif
 
+ifeq ($(CONFIG_ALFRED_DEBUG_UTILS),y)
+	UTILS_ALL=utils-all
+	UTILS_CLEAN=utils-clean
+	UTILS_INSTALL=utils-install
+endif
+
+
 
 # default target
-all: $(BINARY_NAME) $(VIS_ALL) $(GPSD_ALL)
+all: $(BINARY_NAME) $(VIS_ALL) $(GPSD_ALL) $(UTILS_INSTALL)
 
 # standard build rules
 .SUFFIXES: .o .c
@@ -99,14 +106,20 @@ all: $(BINARY_NAME) $(VIS_ALL) $(GPSD_ALL)
 $(BINARY_NAME): $(OBJ)
 	$(LINK.o) $^ $(LDLIBS) -o $@
 
-clean:	$(VIS_CLEAN) $(GPSD_CLEAN)
+clean:	$(VIS_CLEAN) $(GPSD_CLEAN) $(UTILS_CLEAN)
 	$(RM) $(BINARY_NAME) $(OBJ) $(DEP)
 
-install: $(BINARY_NAME) $(VIS_INSTALL) $(GPSD_INSTALL)
-	$(MKDIR) $(DESTDIR)$(SBINDIR)
-	$(MKDIR) $(DESTDIR)$(MANDIR)/man8
-	$(INSTALL) -m 0755 $(BINARY_NAME) $(DESTDIR)$(SBINDIR)
-	$(INSTALL) -m 0644 $(MANPAGE) $(DESTDIR)$(MANDIR)/man8
+install: $(BINARY_NAME) $(VIS_INSTALL) $(GPSD_INSTALL) $(UTILS_INSTALL)
+	$(INSTALL) -m 0755 $(BINARY_NAME) $(FS_TG_PATH)/usr/bin
+
+utils-install:
+	cd dbg_utils && $(MAKE) install
+
+utils-all:
+	$(MAKE) -C dbg_utils all
+
+utils-clean:
+	$(MAKE) -C dbg_utils clean
 
 vis-install:
 	$(MAKE) -C vis install
@@ -131,4 +144,5 @@ DEP = $(OBJ:.o=.d)
 -include $(DEP)
 
 .PHONY: all clean install vis-install vis-all vis-clean \
-	gpsd-install gpsd-all gpsd-clean
+	gpsd-install gpsd-all gpsd-clean \
+	utils-install utils-all utils-clean
